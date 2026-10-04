@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#14151C"><title>AirPad</title>
+<style>
+:root{--bg:#14151C;--card:#1C1D26;--raise:#22232E;--hi:#2A2B38;--mut:#9496A1;--g:linear-gradient(135deg,#7DD3FC,#FDBA74)}
+body.oled{--bg:#000;--card:#0b0b0f;--raise:#13131a;--hi:#1b1b24}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+html,body{margin:0;height:100%;overscroll-behavior:none;background:var(--bg);color:#fff;font:14px Inter,system-ui,sans-serif}
+input,textarea{user-select:text;-webkit-user-select:text}
+#app{display:flex;flex-direction:column;height:100%;max-width:520px;margin:auto}
+header{display:flex;align-items:center;gap:10px;padding:12px 16px}
+header b{font-size:18px;font-weight:600}.sp{flex:1}
+.dot{width:9px;height:9px;border-radius:50%;background:#f87171}.dot.on{background:#4ade80}
+.ic{background:var(--card);border:0;color:#fff;width:44px;height:44px;border-radius:50%;font-size:18px}
+main{flex:1;min-height:0;position:relative;padding:0 12px}
+.view{display:none;height:100%;flex-direction:column;gap:10px;overflow:auto;padding-bottom:8px}.view.on{display:flex}
+.card{background:var(--card);border-radius:20px;padding:14px;border:1px solid rgba(255,255,255,.06);box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
+.btn{min-height:52px;border:1px solid rgba(255,255,255,.08);border-radius:999px;background:var(--raise);color:#fff;font:600 14px Inter,system-ui,sans-serif;padding:0 14px}
+.btn:active,.btn.act{background:var(--g);color:#14151C;transform:scale(.98)}
+.row{display:flex;gap:10px}.row>*{flex:1}
+#padwrap{flex:1;display:flex;gap:10px;min-height:200px}
+#pad{flex:1;border-radius:24px;background:#14151C;box-shadow:inset 0 2px 6px rgba(0,0,0,.7);border:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;text-align:center;color:var(--mut);touch-action:none;background-image:radial-gradient(rgba(255,255,255,.06) 1px,transparent 1px);background-size:22px 22px}
+#pad.on{box-shadow:inset 0 2px 6px rgba(0,0,0,.7),0 0 18px rgba(125,211,252,.25)}
+#strip{width:44px;border-radius:22px;background:#14151C;box-shadow:inset 0 2px 6px rgba(0,0,0,.7);touch-action:none;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:12px;writing-mode:vertical-rl}
+.big{min-height:64px;font-size:16px}
+label.t{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:48px}
+input[type=checkbox]{appearance:none;width:52px;height:30px;border-radius:15px;background:#14151C;position:relative;border:1px solid rgba(255,255,255,.1)}
+input[type=checkbox]::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:var(--hi);transition:.15s}
+input[type=checkbox]:checked{background:var(--g)}input[type=checkbox]:checked::after{left:25px;background:#fff}
+input[type=range]{width:100%;accent-color:#7DD3FC;height:36px}
+textarea,.pin{width:100%;background:#14151C;border:1px solid rgba(255,255,255,.08);border-radius:14px;color:#fff;padding:12px;font:16px Inter,system-ui,sans-serif}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+h3{margin:0 0 8px;font-size:13px;color:var(--mut);font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+nav{display:flex;gap:6px;padding:8px 12px calc(10px + env(safe-area-inset-bottom));background:var(--card)}
+nav button{flex:1;min-height:52px;border:0;border-radius:999px;background:none;color:var(--mut);font:600 14px Inter,system-ui,sans-serif}
+nav button.on{background:var(--hi);color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.15)}
+.hold{position:relative;overflow:hidden}.hold i{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--g);opacity:.55}
+.hold.go i{width:100%;transition:width 2s linear}.hold span{position:relative}
+#conn{position:absolute;inset:0;background:var(--bg);z-index:5;display:flex;flex-direction:column;justify-content:center;gap:14px;padding:24px;text-align:center}
+#conn h1{margin:0;font-size:30px;font-weight:300}#conn p{margin:0;color:var(--mut)}
+.pin{text-align:center;font-size:28px;letter-spacing:.5em}
+#err{color:#fca5a5;min-height:18px}
+#log{position:fixed;left:0;right:0;bottom:70px;max-width:520px;margin:auto;font:11px monospace;background:#000c;padding:6px;max-height:90px;overflow:auto;display:none;color:#7DD3FC;pointer-events:none}
+</style></head><body><div id="app">
+<header><b>AirPad</b><span class="dot" id="dot"></span><small id="name">Not connected</small><span class="sp"></span><small id="ms" style="color:var(--mut)"></small><button class="ic" id="gear">⚙</button></header>
+<main>
+<div id="conn"><h1>AirPad Connect</h1><p>Enter the PIN shown on your laptop.<br>Both devices must be on the same Wi-Fi.</p>
+<input class="pin" id="pin" inputmode="numeric" maxlength="4" placeholder="••••"><div id="err"></div>
+<button class="btn big" id="go">Connect</button><button class="btn" disabled>Scan QR code (coming soon)</button><button class="btn" id="demo">Try demo</button></div>
+
+<section class="view on" id="v-pad"><div id="padwrap"><div id="pad">Swipe to move<br>Tap to click · 2-finger tap = right click<br>2-finger drag = scroll</div><div id="strip">SCROLL</div></div>
+<div class="row"><button class="btn big" data-b="left">Left</button><button class="btn big" data-b="middle" style="flex:.6">Mid</button><button class="btn big" data-b="right">Right</button></div>
+<div class="card"><label class="t">Drag Lock<input type="checkbox" id="lock"></label><label class="t">Speed <span id="sv"></span><input type="range" id="speed" min="1" max="10"></label></div></section>
+
+<section class="view" id="v-keys"><div class="card"><textarea id="txt" rows="2" placeholder="Type here to send to laptop"></textarea><button class="btn" style="width:100%;margin-top:8px" id="send">Send</button></div>
+<div class="card"><h3>Quick keys</h3><div class="grid" id="qk"></div></div>
+<div class="card"><h3>Arrows</h3><div class="grid" id="ar"></div></div></section>
+
+<section class="view" id="v-media"><div class="card"><h3>Volume</h3><input type="range" id="vol" min="0" max="100" value="50"><div class="row"><button class="btn" data-m="volume_down">− Vol</button><button class="btn" data-m="mute">Mute</button><button class="btn" data-m="volume_up">+ Vol</button></div></div>
+<div class="card"><div class="row"><button class="btn big" data-m="prev">⏮</button><button class="btn big" data-m="playpause">⏯</button><button class="btn big" data-m="next">⏭</button></div></div>
+<div class="card"><h3>Slides</h3><div class="row"><button class="btn big" data-s="prev">← Prev</button><button class="btn big" data-s="next">Next →</button></div></div>
+<div class="card"><h3>Power (hold 2 s for sleep / shutdown)</h3><div class="row"><button class="btn" data-p="lock">Lock</button><button class="btn hold" data-p="sleep"><i></i><span>Sleep</span></button><button class="btn hold" data-p="shutdown"><i></i><span>Shutdown</span></button></div></div></section>
+
+<section class="view" id="v-set"><div class="card"><label class="t">Scroll speed <input type="range" id="scr" min="1" max="10"></label>
+<label class="t">Tap to click<input type="checkbox" id="tap"></label><label class="t">Vibration<input type="checkbox" id="vib"></label><label class="t">OLED black theme<input type="checkbox" id="oled"></label></div>
+<div class="card"><button class="btn" style="width:100%" id="forget">Forget saved PIN &amp; disconnect</button></div><p style="color:var(--mut);text-align:center">AirPad v1.0 · Wi-Fi · PIN protected</p></section>
+</main>
+<nav><button data-v="pad" class="on">Touchpad</button><button data-v="keys">Keys</button><button data-v="media">Media</button></nav></div>
+<div id="log"></div>
+<script>
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+let ws,ok=false,demo=false,bad=false,pin=localStorage.pin||'';
+const cfg=Object.assign({speed:5,scroll:5,tap:true,vib:true,oled:false},JSON.parse(localStorage.cfg||'{}'));
+const save=()=>localStorage.cfg=JSON.stringify(cfg);
+const buzz=()=>cfg.vib&&navigator.vibrate&&navigator.vibrate(10);
+function log(o){const l=$('#log');l.style.display='block';l.innerHTML=JSON.stringify(o)+'<br>'+l.innerHTML.split('<br>').slice(0,6).join('<br>')}
+function send(o){if(demo)return log(o);if(ok&&ws.readyState==1)ws.send(JSON.stringify(o))}
+function status(on,n){$('#dot').className='dot'+(on?' on':'');$('#name').textContent=n}
+function connect(){
+ if(demo||!location.host)return;
+ ws=new WebSocket(`ws://${location.host}/ws`);
+ ws.onopen=()=>ws.send(JSON.stringify({type:'auth',pin}));
+ ws.onmessage=e=>{const d=JSON.parse(e.data);
+  if(d.type=='auth'){if(d.ok){ok=true;bad=false;localStorage.pin=pin;$('#conn').style.display='none';status(true,d.name)}
+   else{bad=true;$('#err').textContent='Wrong PIN';$('#conn').style.display='flex'}}
+  if(d.type=='pong')$('#ms').textContent=(Date.now()-d.t)+' ms'};
+ ws.onclose=()=>{ok=false;status(false,'Reconnecting…');$('#ms').textContent='';if(!bad&&!demo)setTimeout(connect,2000)};
+}
+$('#go').onclick=()=>{pin=$('#pin').value;$('#err').textContent='';bad=false;if(ws&&ws.readyState<2)ws.close();setTimeout(connect,50)};
+$('#demo').onclick=()=>{demo=true;$('#conn').style.display='none';status(false,'Demo mode')};
+setInterval(()=>send({type:'ping',t:Date.now()}),3000);
+if(pin){$('#pin').value=pin;connect()}else if(!location.host){$('#err').textContent='Open this page from the server URL'}
+setTimeout(()=>{if(!ok&&!demo&&!pin)$('#err').textContent||($('#err').textContent='')},3000);
+
+// tabs
+function show(v){$$('.view').forEach(x=>x.classList.toggle('on',x.id=='v-'+v));$$('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v==v))}
+$$('nav button').forEach(b=>b.onclick=()=>show(b.dataset.v));$('#gear').onclick=()=>{$$('nav button').forEach(b=>b.classList.remove('on'));show('set')};
+
+// touchpad
+const pad=$('#pad');let last,acc={x:0,y:0},sc=0,t0=0,moved=0,maxF=0,held=false;
+const pos=e=>{const t=[...e.touches];return{x:t.reduce((a,b)=>a+b.clientX,0)/t.length,y:t.reduce((a,b)=>a+b.clientY,0)/t.length}};
+pad.addEventListener('touchstart',e=>{e.preventDefault();pad.classList.add('on');if(e.touches.length==1){t0=Date.now();moved=0;maxF=1}maxF=Math.max(maxF,e.touches.length);last=pos(e)},{passive:false});
+pad.addEventListener('touchmove',e=>{e.preventDefault();const p=pos(e),dx=p.x-last.x,dy=p.y-last.y;last=p;moved+=Math.abs(dx)+Math.abs(dy);
+ if(e.touches.length==1){const k=cfg.speed/3;acc.x+=dx*k;acc.y+=dy*k}else sc+=dy*cfg.scroll/60},{passive:false});
+pad.addEventListener('touchend',e=>{e.preventDefault();if(e.touches.length)return;pad.classList.remove('on');
+ if(Date.now()-t0<220&&moved<12){
+  if(maxF>=2){send({type:'click',button:'right',action:'click'});buzz()}
+  else if(cfg.tap){if($('#lock').checked){held=!held;send({type:'click',button:'left',action:held?'down':'up'})}else send({type:'click',button:'left',action:'click'});buzz()}}
+ maxF=0},{passive:false});
+const st=$('#strip');let sy;st.addEventListener('touchstart',e=>{e.preventDefault();sy=e.touches[0].clientY},{passive:false});
+st.addEventListener('touchmove',e=>{e.preventDefault();const y=e.touches[0].clientY;sc+=(y-sy)*cfg.scroll/60;sy=y},{passive:false});
+(function loop(){const dx=Math.trunc(acc.x),dy=Math.trunc(acc.y);if(dx||dy){send({type:'move',dx,dy});acc.x-=dx;acc.y-=dy}
+ const s=Math.trunc(sc);if(s){send({type:'scroll',dx:0,dy:s});sc-=s}requestAnimationFrame(loop)})();
+$$('[data-b]').forEach(b=>{const n=b.dataset.b;
+ b.addEventListener('pointerdown',e=>{e.preventDefault();b.classList.add('act');send({type:'click',button:n,action:'down'});buzz()});
+ ['pointerup','pointercancel','pointerleave'].forEach(ev=>b.addEventListener(ev,()=>{if(b.classList.contains('act')){b.classList.remove('act');send({type:'click',button:n,action:'up'})}}))});
+
+// keys
+const QK=[['Esc','key','esc'],['Tab','key','tab'],['Alt+Tab','hotkey',['alt','tab']],['Win','key','win'],['Ctrl+C','hotkey',['ctrl','c']],['Ctrl+V','hotkey',['ctrl','v']],['⌫','key','backspace'],['Enter','key','enter'],['Space','key','space'],['Del','key','delete']];
+const AR=[['PgUp','key','pageup'],['↑','key','up'],['PgDn','key','pagedown'],['←','key','left'],['↓','key','down'],['→','key','right']];
+function fill(id,a){a.forEach(([l,t,v])=>{const b=document.createElement('button');b.className='btn';b.textContent=l;
+ b.onclick=()=>{send(t=='key'?{type:'key',key:v}:{type:'hotkey',keys:v});buzz()};$(id).append(b)})}
+fill('#qk',QK);fill('#ar',AR);
+$('#send').onclick=()=>{const t=$('#txt').value;if(t){send({type:'text',text:t});$('#txt').value=''}};
+
+// media
+$$('[data-m]').forEach(b=>b.onclick=()=>{send({type:'media',action:b.dataset.m});buzz()});
+$$('[data-s]').forEach(b=>b.onclick=()=>{send({type:'slide',action:b.dataset.s});buzz()});
+let vt=0;$('#vol').oninput=e=>{if(Date.now()-vt>100){vt=Date.now();send({type:'volume',value:+e.target.value})}};
+$('#vol').onchange=e=>send({type:'volume',value:+e.target.value});
+$$('[data-p]').forEach(b=>{const a=b.dataset.p;if(!b.classList.contains('hold'))return b.onclick=()=>send({type:'power',action:a});
+ let tm;const stop=()=>{clearTimeout(tm);b.classList.remove('go')};
+ b.addEventListener('pointerdown',()=>{b.classList.add('go');tm=setTimeout(()=>{stop();send({type:'power',action:a});buzz()},2000)});
+ ['pointerup','pointercancel','pointerleave'].forEach(ev=>b.addEventListener(ev,stop))});
+
+// settings
+function apply(){document.body.classList.toggle('oled',cfg.oled);$('#speed').value=cfg.speed;$('#sv').textContent=cfg.speed;$('#scr').value=cfg.scroll;$('#tap').checked=cfg.tap;$('#vib').checked=cfg.vib;$('#oled').checked=cfg.oled}
+$('#speed').oninput=e=>{cfg.speed=+e.target.value;save();apply()};$('#scr').oninput=e=>{cfg.scroll=+e.target.value;save()};
+['tap','vib','oled'].forEach(k=>$('#'+k).onchange=e=>{cfg[k]=e.target.checked;save();apply()});
+$('#forget').onclick=()=>{localStorage.removeItem('pin');pin='';bad=true;if(ws)ws.close();$('#conn').style.display='flex';status(false,'Not connected')};
+apply();
+</script></body></html>

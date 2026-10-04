@@ -1,0 +1,4 @@
+aiohttp>=3.9
+pynput>=1.7
+pycaw>=20230407
+qrcode>=7.4
