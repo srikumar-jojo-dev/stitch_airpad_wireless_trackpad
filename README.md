@@ -61,6 +61,7 @@ You'll see output like:
 
 - **Windows Firewall**: On first run, Windows will ask to allow Python through the firewall. **Allow it for Private networks only.**
 - **Same network**: Both devices must be on the same Wi-Fi or hotspot.
+- **Port 8080 already in use**: Close the application using that port, then restart AirPad. AirPad will not terminate other applications.
 - **Never use on public Wi-Fi** — the connection is not encrypted.
 - **Shutdown** has a 5-second delay. Cancel with `shutdown /a` in a terminal.
 - **Sleep and Shutdown** require a 2-second long press to confirm.
@@ -87,3 +88,11 @@ stitch_airpad_wireless_trackpad/
 - **Server**: Python 3.10+, aiohttp, pynput, pycaw (optional, for volume slider)
 - **Client**: Vanilla HTML + CSS + JavaScript (no framework, no build step)
 - **Transport**: WebSocket over Wi-Fi (same port as HTTP: 8080)
+
+## Tests
+
+From the repository root, run the test suite with:
+
+```
+.\server\venv\Scripts\python.exe -m pytest -q
+```

@@ -71,10 +71,23 @@ nav button.on{background:var(--hi);color:#fff;box-shadow:inset 0 1px 0 rgba(255,
 <script>
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 let ws,ok=false,demo=false,bad=false,pin=localStorage.pin||'';
-const cfg=Object.assign({speed:5,scroll:5,tap:true,vib:true,oled:false},JSON.parse(localStorage.cfg||'{}'));
+function loadConfig(){
+ let saved={};
+ try{
+  const parsed=JSON.parse(localStorage.cfg||'{}');
+  if(!parsed||typeof parsed!=='object'||Array.isArray(parsed))throw new TypeError('Expected a settings object');
+  saved=parsed;
+ }catch(error){console.warn('Ignoring invalid AirPad settings.',error)}
+ const inRange=(value,fallback)=>Number.isInteger(value)&&value>=1&&value<=10?value:fallback;
+ return{speed:inRange(saved.speed,5),scroll:inRange(saved.scroll,5),
+  tap:typeof saved.tap==='boolean'?saved.tap:true,
+  vib:typeof saved.vib==='boolean'?saved.vib:true,
+  oled:typeof saved.oled==='boolean'?saved.oled:false};
+}
+const cfg=loadConfig();
 const save=()=>localStorage.cfg=JSON.stringify(cfg);
 const buzz=()=>cfg.vib&&navigator.vibrate&&navigator.vibrate(10);
-function log(o){const l=$('#log');l.style.display='block';l.innerHTML=JSON.stringify(o)+'<br>'+l.innerHTML.split('<br>').slice(0,6).join('<br>')}
+function log(o){const l=$('#log'),entry=document.createElement('div');entry.textContent=JSON.stringify(o);l.prepend(entry);while(l.children.length>6)l.lastElementChild.remove();l.style.display='block'}
 function send(o){if(demo)return log(o);if(ok&&ws.readyState==1)ws.send(JSON.stringify(o))}
 function status(on,n){$('#dot').className='dot'+(on?' on':'');$('#name').textContent=n}
 function connect(){
@@ -89,7 +102,7 @@ function connect(){
 }
 $('#go').onclick=()=>{pin=$('#pin').value;$('#err').textContent='';bad=false;if(ws&&ws.readyState<2)ws.close();setTimeout(connect,50)};
 $('#demo').onclick=()=>{demo=true;$('#conn').style.display='none';status(false,'Demo mode')};
-setInterval(()=>send({type:'ping',t:Date.now()}),3000);
+setInterval(()=>{if(ok)send({type:'ping',t:Date.now()})},3000);
 if(pin){$('#pin').value=pin;connect()}else if(!location.host){$('#err').textContent='Open this page from the server URL'}
 setTimeout(()=>{if(!ok&&!demo&&!pin)$('#err').textContent||($('#err').textContent='')},3000);
 

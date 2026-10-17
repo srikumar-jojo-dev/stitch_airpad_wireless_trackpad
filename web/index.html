@@ -4,6 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
 <meta name="description" content="AirPad – turn your phone into a wireless trackpad, keyboard & media remote"/>
+<link rel="icon" href="data:,"/>
 <title>AirPad Remote</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
@@ -951,10 +952,10 @@ input, textarea, select {
           <span class="t-body-sm color-hint">Shown in terminal</span>
         </div>
         <div class="pin-grid" id="pin-grid">
-          <div class="pin-box"><input type="tel" maxlength="1" inputmode="numeric" pattern="[0-9]" data-pin="0" autocomplete="off"/></div>
-          <div class="pin-box"><input type="tel" maxlength="1" inputmode="numeric" pattern="[0-9]" data-pin="1" autocomplete="off"/></div>
-          <div class="pin-box"><input type="tel" maxlength="1" inputmode="numeric" pattern="[0-9]" data-pin="2" autocomplete="off"/></div>
-          <div class="pin-box"><input type="tel" maxlength="1" inputmode="numeric" pattern="[0-9]" data-pin="3" autocomplete="off"/></div>
+          <div class="pin-box"><input type="tel" maxlength="1" inputmode="numeric" pattern="[0-9]" data-pin="0" autocomplete="off" aria-label="PIN digit 1"/></div>
+          <div class="pin-box"><input type="tel" maxlength="1" inputmode="numeric" pattern="[0-9]" data-pin="1" autocomplete="off" aria-label="PIN digit 2"/></div>
+          <div class="pin-box"><input type="tel" maxlength="1" inputmode="numeric" pattern="[0-9]" data-pin="2" autocomplete="off" aria-label="PIN digit 3"/></div>
+          <div class="pin-box"><input type="tel" maxlength="1" inputmode="numeric" pattern="[0-9]" data-pin="3" autocomplete="off" aria-label="PIN digit 4"/></div>
         </div>
         <button class="btn-primary" id="btn-connect" style="width:100%;">
           <span class="material-symbols-outlined" style="font-size:20px;">bolt</span>
@@ -981,7 +982,7 @@ input, textarea, select {
             <span class="dot"></span>
             <span class="t-label-sm uppercase tracking-wide" style="color:var(--text-secondary);">Trackpad</span>
           </div>
-          <button class="icon-btn" id="btn-fullscreen" style="width:40px; height:40px; min-width:40px; min-height:40px;">
+          <button class="icon-btn" id="btn-fullscreen" aria-label="Toggle fullscreen" style="width:40px; height:40px; min-width:40px; min-height:40px;">
             <span class="material-symbols-outlined" style="font-size:18px; color:var(--accent-cyan);">open_in_full</span>
           </button>
         </div>
@@ -1004,7 +1005,7 @@ input, textarea, select {
           <span class="material-symbols-outlined color-cyan" style="font-size:20px;">mouse</span>
           Left
         </button>
-        <button class="mouse-btn mouse-btn-middle" id="btn-mouse-middle">
+        <button class="mouse-btn mouse-btn-middle" id="btn-mouse-middle" aria-label="Middle mouse button">
           <span class="material-symbols-outlined" style="font-size:16px;">unfold_more</span>
         </button>
         <button class="mouse-btn mouse-btn-right" id="btn-mouse-right">
@@ -1033,7 +1034,7 @@ input, textarea, select {
       <!-- Text input -->
       <div class="text-input-bar">
         <div class="icon-prefix"><span class="material-symbols-outlined">keyboard</span></div>
-        <input type="text" id="text-input" placeholder="Type to send text to laptop..." autocomplete="off" autocorrect="off"/>
+        <input type="text" id="text-input" aria-label="Text to send to laptop" placeholder="Type to send text to laptop..." autocomplete="off" autocorrect="off"/>
         <button class="send-btn" id="btn-send-text">
           Send <span class="material-symbols-outlined" style="font-size:18px;">send</span>
         </button>
@@ -1284,7 +1285,7 @@ input, textarea, select {
               <div class="title">Tap-to-Click</div>
               <div class="subtitle">Surface tap acts as primary click</div>
             </div>
-            <button class="toggle on" id="toggle-tap"><div class="toggle-knob"></div></button>
+            <button class="toggle on" id="toggle-tap" aria-label="Tap-to-Click" aria-pressed="true"><div class="toggle-knob"></div></button>
           </div>
           <div style="height:1px; background:var(--surface-container-highest);"></div>
           <div class="settings-row">
@@ -1292,7 +1293,7 @@ input, textarea, select {
               <div class="title">Vibration Feedback</div>
               <div class="subtitle">Haptic pulses on click and scroll</div>
             </div>
-            <button class="toggle on" id="toggle-vibe"><div class="toggle-knob"></div></button>
+            <button class="toggle on" id="toggle-vibe" aria-label="Vibration Feedback" aria-pressed="true"><div class="toggle-knob"></div></button>
           </div>
         </div>
       </div>
@@ -1330,7 +1331,7 @@ input, textarea, select {
             </div>
           </div>
           <div class="pin-update-row">
-            <input type="tel" class="pin-update-input" id="settings-pin-input" maxlength="4" placeholder="1234" inputmode="numeric"/>
+            <input type="tel" class="pin-update-input" id="settings-pin-input" maxlength="4" placeholder="1234" inputmode="numeric" aria-label="New 4-digit PIN"/>
             <button class="btn-primary" id="btn-save-pin" style="flex-shrink:0; padding:0 16px;">
               <span class="material-symbols-outlined" style="font-size:18px;">key</span> Save
             </button>
@@ -1369,17 +1370,35 @@ input, textarea, select {
 // ═══════════════════════════════════════════════════════════
 //  STATE
 // ═══════════════════════════════════════════════════════════
+function getSavedSpeed(key, fallback) {
+  const stored = localStorage.getItem(key);
+  if (stored === null) return fallback;
+  const value = Number(stored);
+  if (Number.isInteger(value) && value >= 1 && value <= 10) return value;
+  console.warn(`Ignoring invalid saved setting: ${key}`);
+  return fallback;
+}
+
+function getSavedTheme() {
+  const stored = localStorage.getItem('airpad_theme');
+  if (stored === null || stored === 'charcoal' || stored === 'oled') {
+    return stored || 'charcoal';
+  }
+  console.warn('Ignoring invalid saved setting: airpad_theme');
+  return 'charcoal';
+}
+
 const S = {
   ws: null,
   authenticated: false,
   demoMode: false,
   pcName: '',
   pin: localStorage.getItem('airpad_pin') || '',
-  pointerSpeed: parseInt(localStorage.getItem('airpad_pointer_speed') || '6'),
-  scrollSpeed: parseInt(localStorage.getItem('airpad_scroll_speed') || '4'),
-  tapToClick: localStorage.getItem('airpad_tap_click') !== 'false',
+  pointerSpeed: getSavedSpeed('airpad_pointer_speed', 6),
+  scrollSpeed: getSavedSpeed('airpad_scroll_speed', 4),
+  tapToClick: (localStorage.getItem('airpad_tap_to_click') ?? localStorage.getItem('airpad_tap_click')) !== 'false',
   vibration: localStorage.getItem('airpad_vibration') !== 'false',
-  theme: localStorage.getItem('airpad_theme') || 'charcoal',
+  theme: getSavedTheme(),
   dragLock: false,
   dragLockHeld: false,
   muted: false,
@@ -1829,20 +1848,28 @@ scrollRail.addEventListener('touchcancel', () => { railScrolling = false; }, { p
 // Mouse buttons
 function setupMouseBtn(id, button) {
   const btn = $(id);
-  btn.addEventListener('touchstart', (e) => {
+  btn.addEventListener('pointerdown', (e) => {
     e.preventDefault(); vibrate(10);
+    btn.setPointerCapture(e.pointerId);
     if (S.dragLock && button === 'left') {
       // In drag lock mode, toggle
     } else {
       send({ type: 'click', button, action: 'down' });
     }
-  }, { passive: false });
-  btn.addEventListener('touchend', (e) => {
+  });
+  const releaseButton = (e) => {
     e.preventDefault();
     if (!(S.dragLock && button === 'left')) {
       send({ type: 'click', button, action: 'up' });
     }
-  }, { passive: false });
+  };
+  btn.addEventListener('pointerup', releaseButton);
+  btn.addEventListener('pointercancel', releaseButton);
+  btn.addEventListener('click', (e) => {
+    if (e.detail === 0 && !(S.dragLock && button === 'left')) {
+      send({ type: 'click', button, action: 'click' });
+    }
+  });
 }
 setupMouseBtn('btn-mouse-left', 'left');
 setupMouseBtn('btn-mouse-middle', 'middle');
@@ -1907,7 +1934,7 @@ document.querySelectorAll('[data-action="hotkey"]').forEach(btn => {
 // Text send
 function sendText() {
   const input = $('text-input');
-  const val = input.value.trim();
+  const val = input.value;
   if (val) {
     send({ type: 'text', text: val.substring(0, 500) });
     showToast('Sent: "' + (val.length > 14 ? val.substring(0, 14) + '...' : val) + '"');
@@ -2089,10 +2116,12 @@ $('settings-scroll-slider').oninput = (e) => {
 // Toggles
 function setupSettingsToggle(id, key) {
   const btn = $(id);
-  if (S[key]) btn.classList.add('on'); else btn.classList.remove('on');
+  btn.classList.toggle('on', S[key]);
+  btn.setAttribute('aria-pressed', String(S[key]));
   btn.onclick = () => {
     S[key] = !S[key];
     btn.classList.toggle('on', S[key]);
+    btn.setAttribute('aria-pressed', String(S[key]));
     localStorage.setItem('airpad_' + key.replace(/([A-Z])/g, '_$1').toLowerCase(), S[key]);
     vibrate(12);
   };

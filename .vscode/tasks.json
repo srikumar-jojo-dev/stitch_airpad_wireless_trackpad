@@ -1,0 +1,21 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run Active File",
+      "type": "shell",
+      "command": "$file = '${file}'; switch ('${fileExtname}'.ToLowerInvariant()) { '.py' { python \"$file\" } '.js' { node \"$file\" } '.ts' { npx tsx \"$file\" } '.html' { $directory = Split-Path -Parent $file; $basename = Split-Path -Leaf $file; $server = Start-Process -FilePath python -ArgumentList @('-m', 'http.server', '8765', '--directory', $directory) -PassThru; Start-Sleep -Seconds 1; Start-Process \"http://127.0.0.1:8765/$basename\"; Write-Output \"Serving $file at http://127.0.0.1:8765/$basename (PID $($server.Id))\" } '.ps1' { & \"$file\" } '.sh' { bash \"$file\" } '.bat' { & $env:ComSpec /c \"$file\" } default { Write-Error \"Unsupported active file extension: ${fileExtname}\"; exit 1 } }",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated"
+      }
+    }
+  ]
+}

@@ -3,16 +3,12 @@ AirPad Server – aiohttp WebSocket + static file server.
 Turns an Android phone into a wireless mouse, keyboard & media remote for Windows.
 """
 
-import asyncio
 import ctypes
-import hashlib
 import hmac
-import io
 import json
 import logging
-import os
 import platform
-import random
+import secrets
 import socket
 import string
 import subprocess
@@ -54,9 +50,10 @@ BLOCK_DURATION = 60  # seconds
 MAX_DX_DY = 2000
 MAX_TEXT_LEN = 500
 PC_NAME = platform.node() or "Windows-PC"
+CREATE_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 # ── PIN generation ─────────────────────────────────────────────
-PIN = "".join(random.choices(string.digits, k=4))
+PIN = "".join(secrets.choice(string.digits) for _ in range(4))
 
 # ── Rate-limit / brute-force tracking ──────────────────────────
 # { ip: { "fails": int, "blocked_until": float } }
@@ -132,26 +129,6 @@ def is_port_in_use(port: int) -> bool:
             return False
     except OSError:
         return True
-
-
-def free_port_if_in_use(port: int) -> bool:
-    """Best-effort cleanup for stale AirPad listeners from previous runs."""
-    if not is_port_in_use(port):
-        return True
-
-    try:
-        cmd = [
-            "powershell",
-            "-NoProfile",
-            "-Command",
-            f"$p = Get-NetTCPConnection -LocalPort {port} -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique; if ($p) {{ $p | ForEach-Object {{ Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }} }}; (Get-NetTCPConnection -LocalPort {port} -ErrorAction SilentlyContinue | Measure-Object).Count",
-        ]
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        if result.returncode == 0:
-            return not is_port_in_use(port)
-    except Exception:
-        pass
-    return False
 
 
 def safe_mouse_move(dx: int, dy: int) -> None:
@@ -310,8 +287,9 @@ def type_text(text: str) -> None:
     which can lose focus on secure password fields or other UI surfaces.
     """
     ensure_cursor_visible()
-    for ch in text[:MAX_TEXT_LEN]:
-        if ch == "\n":
+    text = str(text)[:MAX_TEXT_LEN]
+    for ch in text:
+        if ch in ("\n", "\r"):
             kbd.press(Key.enter)
             kbd.release(Key.enter)
         elif ch == "\t":
@@ -328,17 +306,6 @@ def handle_text(data: dict) -> None:
         type_text(text)
 
 
-def set_system_mute(muted: bool) -> bool:
-    vol = get_volume_interface()
-    if not vol:
-        return False
-    try:
-        vol.SetMute(muted, None)
-        return True
-    except Exception:
-        return False
-
-
 def handle_media(data: dict) -> None:
     action = data.get("action", "")
     if action == "mute":
@@ -350,8 +317,6 @@ def handle_media(data: dict) -> None:
                 return
             except Exception:
                 pass
-        if set_system_mute(True):
-            return
     key = MEDIA_MAP.get(action)
     if key:
         kbd.press(key)
@@ -387,23 +352,24 @@ def handle_slide(data: dict) -> None:
 
 def handle_power(data: dict) -> None:
     action = data.get("action", "")
+    creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
     if action == "lock":
         log.info("⚡ Locking workstation")
         subprocess.Popen(
             ["rundll32.exe", "user32.dll,LockWorkStation"],
-            creationflags=subprocess.CREATE_NO_WINDOW,
+            creationflags=creation_flags,
         )
     elif action == "sleep":
         log.info("⚡ Suspending (sleep)")
         subprocess.Popen(
             ["rundll32.exe", "powrprof.dll,SetSuspendState", "0", "1", "0"],
-            creationflags=subprocess.CREATE_NO_WINDOW,
+            creationflags=creation_flags,
         )
     elif action == "shutdown":
         log.info("⚡ Shutdown in 5 seconds (cancel with: shutdown /a)")
         subprocess.Popen(
             ["shutdown", "/s", "/t", "5"],
-            creationflags=subprocess.CREATE_NO_WINDOW,
+            creationflags=creation_flags,
         )
 
 
@@ -520,8 +486,8 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
 #  HTTP routes
 # ═══════════════════════════════════════════════════════════════
 
-async def index_handler(request: web.Request) -> web.FileResponse:
-    return web.FileResponse(Path(__file__).parent.parent / "web" / "index.html")
+async def index_handler(_request: web.Request) -> web.FileResponse:
+    return web.FileResponse(get_web_dir() / "index.html")
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -532,10 +498,17 @@ def create_app() -> web.Application:
     app = web.Application()
     app.router.add_get("/ws", ws_handler)
     app.router.add_get("/", index_handler)
-    # Serve static files from web/ directory
-    web_dir = Path(__file__).parent.parent / "web"
+    # Serve static files from the bundled UI directory when frozen
+    web_dir = get_web_dir()
     app.router.add_static("/", web_dir, show_index=False)
     return app
+
+
+def get_web_dir() -> Path:
+    """Return the directory containing the browser UI, including bundled app builds."""
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        return Path(sys._MEIPASS) / "web"
+    return Path(__file__).resolve().parent.parent / "web"
 
 
 def print_banner() -> None:
@@ -559,9 +532,9 @@ def print_banner() -> None:
 
 def main() -> None:
     if is_port_in_use(PORT):
-        log.warning(f"Port {PORT} already in use; releasing stale AirPad listener...")
-        if not free_port_if_in_use(PORT):
-            raise RuntimeError(f"Port {PORT} is still in use. Close the stale process and retry.")
+        raise RuntimeError(
+            f"Port {PORT} is already in use. Close the application using it and retry."
+        )
 
     print_banner()
     app = create_app()
